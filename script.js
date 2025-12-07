@@ -246,29 +246,63 @@ function growExistingFlowers() {
 
   let anyChanged = false;
 
-  flowers.forEach(flower => {
-    if (flower.size < MAX_FLOWER_SIZE) {
-      flower.size = Math.min(flower.size + FLOWER_GROWTH, MAX_FLOWER_SIZE);
+  flowers.forEach(flowerData => {
+    // 1. Calculate new state
+    let newSize = flowerData.size;
+    let newPetals = flowerData.petals || STARTING_PETALS[0];
+
+    if (flowerData.size < MAX_FLOWER_SIZE) {
+      newSize = Math.min(flowerData.size + FLOWER_GROWTH, MAX_FLOWER_SIZE);
       anyChanged = true;
     }
-    if (!flower.petals) flower.petals = STARTING_PETALS[0];
-    flower.petals = getNextPetalStage(flower.petals);
-  });
-  if (anyChanged) {
-    saveFlowers(flowers);
-  }
 
-  document.querySelectorAll(".flower-container").forEach(container => {
-    const id = parseFloat(container.dataset.id);
-    const flowerData = flowers.find(f => f.id === id);
-    if (flowerData) {
+    const nextPetalStage = getNextPetalStage(newPetals);
+    const petalsChanged = nextPetalStage !== newPetals;
+
+    // 2. Update data object
+    flowerData.size = newSize;
+    flowerData.petals = nextPetalStage;
+
+    // 3. Find the DOM element
+    const container = document.querySelector(`.flower-container[data-id="${flowerData.id}"]`);
+    if (container) {
       const flowerHead = container.querySelector(".flower");
+
       if (flowerHead) {
         flowerHead.style.setProperty("--size", flowerData.size + "px");
-        applyFlowerMask(flowerHead, flowerData.petals);
+
+        if (petalsChanged) {
+          const ghost = flowerHead.cloneNode(true);
+          const computedStyle = window.getComputedStyle(flowerHead);
+          ghost.style.width = computedStyle.width;
+          ghost.style.height = computedStyle.height;
+
+          ghost.classList.add('flower-ghost');
+          ghost.classList.remove('flower');
+
+          container.appendChild(ghost);
+
+          applyFlowerMask(flowerHead, flowerData.petals);
+
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              ghost.classList.add('fading-out');
+            });
+          });
+
+          setTimeout(() => {
+            ghost.remove();
+          }, 2000);
+        } else {
+          applyFlowerMask(flowerHead, flowerData.petals);
+        }
       }
     }
   });
+
+  if (anyChanged) {
+    saveFlowers(flowers);
+  }
 }
 
 function resetGarden() {

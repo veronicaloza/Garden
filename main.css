@@ -106,6 +106,20 @@ body {
   opacity: 0;
 }
 
+/* Add this to your CSS file */
+.flower-ghost {
+  pointer-events: none;
+  z-index: 2;
+  /* Ensure it sits on top of the real flower */
+  transition: opacity 2s ease;
+  /* The duration of the shape morph */
+  opacity: 1;
+}
+
+.flower-ghost.fading-out {
+  opacity: 0;
+}
+
 .flower.grown {
   opacity: 1;
   filter: blur(1px);
