@@ -1,0 +1,373 @@
+// COOKIE HELPERS
+function setCookie(name, value, days) {
+  const d = new Date();
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/`;
+}
+
+function getCookie(name) {
+  const prefix = name + "=";
+  const parts = document.cookie
+    .split(';')
+    .map(c => c.trim());
+  for (let part of parts) {
+    if (part.startsWith(prefix)) {
+      return part.substring(prefix.length);
+    }
+  }
+  return "";
+}
+
+function deleteAllCookies() {
+  document.cookie.split(";").forEach(c => {
+    const eq = c.indexOf("=");
+    const key = eq > -1 ? c.slice(0, eq).trim() : c.trim();
+    document.cookie =
+      key +
+      "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+  });
+}
+
+// GARDEN LOGIC
+const MAX_STAGE = 8;
+const THIRST_MS = 2 * 60 * 60 * 1000; // 2h
+const MAX_FLOWERS = 50;
+const MAX_FLOWER_SIZE = 120; // Maximum flower size in pixels
+const FLOWER_GROWTH = 2; // How much flowers grow per tick (smaller for gradual growth)
+
+// Auto-growth timing (in milliseconds)
+const GROWTH_INTERVAL = 3000; // Grow existing flowers every 3 seconds
+const SPAWN_INTERVAL = 5000; // Spawn new flower every 8 seconds
+
+// Petal stages that flowers grow through
+const PETAL_STAGES = [3, 6, 9, 12, 15, 18, 21, 25, 30, 35, 40, 45, 50];
+const STARTING_PETALS = [3, 6]; // Flowers randomly start at 3 or 6 petals
+
+// Array of flower colors (each is an array of 3 colors for the radial gradient: [center, middle, edge])
+const FLOWER_COLORS = [
+  ['#E1DFE4', '#FCACE1', '#FFB8DA'],  // Gray → Pink → Rose
+  ['#FFB8DA', '#FAA28C', '#D4ED6B'],  // Pink → Peach → Lime
+  ['#FCACE1', '#E1DFE4', '#2666FB'],  // Pink → Gray → Blue
+  ['#D4ED6B', '#FFB8DA', '#FCACE1'],  // Lime → Pink → Magenta
+  ['#E4E4DB', '#FAA28C', '#FCACE1'],  // Cream → Peach → Pink
+  ['#FAA28C', '#FFB8DA', '#2666FB'],  // Peach → Pink → Blue
+  ['#2666FB', '#FCACE1', '#E1DFE4'],  // Blue → Pink → Gray
+  ['#FFB8DA', '#D4ED6B', '#E4E4DB'],  // Pink → Lime → Cream
+  ['#E1DFE4', '#D4ED6B', '#FAA28C'],  // Gray → Lime → Peach
+  ['#FCACE1', '#FAA28C', '#E4E4DB'],  // Pink → Peach → Cream
+  ['#D4ED6B', '#2666FB', '#FFB8DA'],  // Lime → Blue → Pink
+  ['#E4E4DB', '#FCACE1', '#D4ED6B'],  // Cream → Pink → Lime
+];
+
+// Pre-defined flower masks for specific petal counts
+const PETAL_MASKS = {
+  3: {
+    g: '/46.41% 46.41% radial-gradient(#000 calc(71% - 1px),#0000 71%) no-repeat',
+    mask: '100% 50% var(--g),25% 93.301% var(--g),25% 6.699% var(--g),radial-gradient(100% 100%,#000 13.397%,#0000 calc(13.397% + 1px))'
+  },
+  6: {
+    g: '/30% 30% radial-gradient(#000 calc(71% - 1px),#0000 71%) no-repeat',
+    mask: '100% 50% var(--g),75% 93.301% var(--g),25% 93.301% var(--g),0% 50% var(--g),25% 6.699% var(--g),75% 6.699% var(--g),radial-gradient(100% 100%,#000 20%,#0000 calc(20% + 1px))'
+  },
+  9: {
+    g: '/25.486% 25.486% radial-gradient(#000 calc(71% - 1px),#0000 71%) no-repeat',
+    mask: '100% 50% var(--g),88.302% 82.139% var(--g),58.682% 99.24% var(--g),25% 93.301% var(--g),3.015% 67.101% var(--g),3.015% 32.899% var(--g),25% 6.699% var(--g),58.682% 0.76% var(--g),88.302% 17.861% var(--g),radial-gradient(100% 100%,#000 35.01%,#0000 calc(35.01% + 1px))'
+  },
+  25: {
+    g: '/11.138% 11.138% radial-gradient(#000 calc(71% - 1px),#0000 71%) no-repeat',
+    mask: '100% 50% var(--g),98.429% 62.434% var(--g),93.815% 74.088% var(--g),86.448% 84.227% var(--g),76.791% 92.216% var(--g),65.451% 97.553% var(--g),53.14% 99.901% var(--g),40.631% 99.114% var(--g),28.711% 95.241% var(--g),18.129% 88.526% var(--g),9.549% 79.389% var(--g),3.511% 68.406% var(--g),0.394% 56.267% var(--g),0.394% 43.733% var(--g),3.511% 31.594% var(--g),9.549% 20.611% var(--g),18.129% 11.474% var(--g),28.711% 4.759% var(--g),40.631% 0.886% var(--g),53.14% 0.099% var(--g),65.451% 2.447% var(--g),76.791% 7.784% var(--g),86.448% 15.773% var(--g),93.815% 25.912% var(--g),98.429% 37.566% var(--g),radial-gradient(100% 100%,#000 44.081%,#0000 calc(44.081% + 1px))'
+  },
+  50: {
+    g: '/6% 6% radial-gradient(#000 calc(71% - 1px),#0000 71%) no-repeat',
+    mask: '100% 50% var(--g),99.606% 56.267% var(--g),98.429% 62.434% var(--g),96.489% 68.406% var(--g),93.815% 74.088% var(--g),90.451% 79.389% var(--g),86.448% 84.227% var(--g),81.871% 88.526% var(--g),76.791% 92.216% var(--g),71.289% 95.241% var(--g),65.451% 97.553% var(--g),59.369% 99.114% var(--g),53.14% 99.901% var(--g),46.86% 99.901% var(--g),40.631% 99.114% var(--g),34.549% 97.553% var(--g),28.711% 95.241% var(--g),23.209% 92.216% var(--g),18.129% 88.526% var(--g),13.552% 84.227% var(--g),9.549% 79.389% var(--g),6.185% 74.088% var(--g),3.511% 68.406% var(--g),1.571% 62.434% var(--g),0.394% 56.267% var(--g),0% 50% var(--g),0.394% 43.733% var(--g),1.571% 37.566% var(--g),3.511% 31.594% var(--g),6.185% 25.912% var(--g),9.549% 20.611% var(--g),13.552% 15.773% var(--g),18.129% 11.474% var(--g),23.209% 7.784% var(--g),28.711% 4.759% var(--g),34.549% 2.447% var(--g),40.631% 0.886% var(--g),46.86% 0.099% var(--g),53.14% 0.099% var(--g),59.369% 0.886% var(--g),65.451% 2.447% var(--g),71.289% 4.759% var(--g),76.791% 7.784% var(--g),81.871% 11.474% var(--g),86.448% 15.773% var(--g),90.451% 20.611% var(--g),93.815% 25.912% var(--g),96.489% 31.594% var(--g),98.429% 37.566% var(--g),99.606% 43.733% var(--g),radial-gradient(100% 100%,#000 47%,#0000 calc(47% + 1px))'
+  }
+};
+
+// Generate mask for any petal count by calculating positions around a circle
+function generateFlowerMask(petalCount) {
+  // Use preset if available
+  if (PETAL_MASKS[petalCount]) {
+    return PETAL_MASKS[petalCount];
+  }
+
+  // Generate mathematically for other counts
+  const petalSize = Math.max(5, 50 / petalCount * 2.5);
+  const positions = [];
+
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (i / petalCount) * 2 * Math.PI;
+    const x = 50 + 50 * Math.cos(angle);
+    const y = 50 + 50 * Math.sin(angle);
+    positions.push(`${x.toFixed(3)}% ${y.toFixed(3)}% var(--g)`);
+  }
+
+  const centerSize = Math.min(47, 10 + petalCount * 0.8);
+
+  return {
+    g: `/${petalSize.toFixed(3)}% ${petalSize.toFixed(3)}% radial-gradient(#000 calc(71% - 1px),#0000 71%) no-repeat`,
+    mask: positions.join(',') + `,radial-gradient(100% 100%,#000 ${centerSize}%,#0000 calc(${centerSize}% + 1px))`
+  };
+}
+
+// Get next petal stage
+function getNextPetalStage(currentPetals) {
+  for (let i = 0; i < PETAL_STAGES.length; i++) {
+    if (PETAL_STAGES[i] > currentPetals) {
+      return PETAL_STAGES[i];
+    }
+  }
+  return PETAL_STAGES[PETAL_STAGES.length - 1]; // Return max if already at max
+}
+
+// Apply mask to flower element
+function applyFlowerMask(flowerHead, petalCount) {
+  const maskData = generateFlowerMask(petalCount);
+  flowerHead.style.setProperty('--g', maskData.g);
+  flowerHead.style.mask = maskData.mask;
+  flowerHead.style.webkitMask = maskData.mask;
+}
+
+function loadState(plantName) {
+  let sizeStage = parseInt(getCookie(plantName + "_size")) || 0;
+  let last = parseInt(getCookie(plantName + "_watered")) || 0;
+  return { sizeStage, last };
+}
+
+function saveState(plantName, sizeStage) {
+  setCookie(plantName + "_size", sizeStage, 365);
+  setCookie(plantName + "_watered", Date.now(), 365);
+}
+
+function updatePlant(elt) {
+  const name = elt.dataset.name;
+  let { sizeStage, last } = loadState(name);
+  const now = Date.now();
+
+  // if too thirsty → reset
+  if (now - last > THIRST_MS) {
+    sizeStage = 0;
+    setCookie(name + "_size", 0, 365);
+  }
+
+  // map stage → css vars
+  const sizeV = 10 + sizeStage * 5;      // 10vmin → 50vmin
+  const hueV = (120 + sizeStage * 20) % 360;
+  elt.style.setProperty("--size", sizeV + "vmin");
+  elt.style.setProperty("--hue", hueV);
+}
+
+// FLOWER LOGIC - Using localStorage for larger storage (5MB vs 4KB cookie limit)
+function loadFlowers() {
+  try {
+    const data = localStorage.getItem("flowers_data");
+    if (!data) return [];
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+function saveFlowers(flowers) {
+  try {
+    localStorage.setItem("flowers_data", JSON.stringify(flowers));
+  } catch (e) {
+    console.warn("Could not save flowers:", e);
+  }
+}
+
+function createFlowerElement(flower, animate = false) {
+  const garden = document.getElementById("garden");
+
+  // Create container
+  const container = document.createElement("div");
+  container.className = "flower-container";
+  container.dataset.id = flower.id;
+  container.style.setProperty("--x", flower.x + "%");
+  container.style.setProperty("--y", flower.y + "%");
+
+  // Create stem
+  const stem = document.createElement("div");
+  stem.className = "stem";
+
+  // Create flower head
+  const flowerHead = document.createElement("div");
+  flowerHead.className = "flower";
+  flowerHead.style.setProperty("--rotation", flower.rotation + "deg");
+
+  // Apply colors from array or fallback to hue-based
+  if (flower.colorIndex !== undefined && FLOWER_COLORS[flower.colorIndex]) {
+    const colors = FLOWER_COLORS[flower.colorIndex];
+    flowerHead.style.setProperty("--color-center", colors[0]);
+    flowerHead.style.setProperty("--color-mid", colors[1]);
+    flowerHead.style.setProperty("--color-edge", colors[2]);
+  } else {
+    // Fallback for old flowers without colorIndex
+    flowerHead.style.setProperty("--hue", flower.hue || 330);
+  }
+
+  // Apply petal mask based on current petal count
+  const petals = flower.petals || STARTING_PETALS[0];
+  applyFlowerMask(flowerHead, petals);
+
+  container.appendChild(stem);
+  container.appendChild(flowerHead);
+  garden.appendChild(container);
+
+  if (animate) {
+    // Start small, then grow with transition
+    requestAnimationFrame(() => {
+      // Grow stem first
+      stem.style.setProperty("--stem-height", "100%");
+
+      // Then bloom flower after stem grows
+      setTimeout(() => {
+        flowerHead.style.setProperty("--size", flower.size + "px");
+        flowerHead.classList.add("grown");
+      }, 600);
+    });
+  } else {
+    // Instant display for loaded flowers
+    stem.style.setProperty("--stem-height", "100%");
+    flowerHead.style.setProperty("--size", flower.size + "px");
+    flowerHead.classList.add("grown");
+  }
+
+  return container;
+}
+
+function spawnFlower(animate = true) {
+  const flowers = loadFlowers();
+  if (flowers.length >= MAX_FLOWERS) return;
+
+  // Randomly start with 3 or 6 petals
+  const startingPetals = STARTING_PETALS[Math.floor(Math.random() * STARTING_PETALS.length)];
+
+  // Random color from the array
+  const colorIndex = Math.floor(Math.random() * FLOWER_COLORS.length);
+
+  const newFlower = {
+    id: Date.now() + Math.random(),
+    x: 5 + Math.random() * 90,
+    y: 15 + Math.random() * 60,  // Flowers appear between 15% and 75% from top
+    colorIndex: colorIndex,
+    rotation: Math.random() * 360,
+    size: 30 + Math.random() * 50,
+    petals: startingPetals
+  };
+
+  flowers.push(newFlower);
+  saveFlowers(flowers);
+  createFlowerElement(newFlower, animate);
+}
+
+function renderAllFlowers() {
+  // Remove existing flower containers
+  document.querySelectorAll(".flower-container").forEach(el => el.remove());
+
+  // Recreate from saved data
+  const flowers = loadFlowers();
+  flowers.forEach(flower => createFlowerElement(flower, false));
+}
+
+function growExistingFlowers() {
+  const flowers = loadFlowers();
+  if (flowers.length === 0) return;
+
+  let anyChanged = false;
+
+  // Increase size and petals of all flowers in data
+  flowers.forEach(flower => {
+    // Grow size
+    if (flower.size < MAX_FLOWER_SIZE) {
+      flower.size = Math.min(flower.size + FLOWER_GROWTH, MAX_FLOWER_SIZE);
+      anyChanged = true;
+    }
+    // Grow petals gradually (only advance stage every few growth ticks)
+    if (!flower.petals) flower.petals = STARTING_PETALS[0];
+    flower.petals = getNextPetalStage(flower.petals);
+  });
+
+  // Only save if something changed
+  if (anyChanged) {
+    saveFlowers(flowers);
+  }
+
+  // Update existing DOM elements
+  document.querySelectorAll(".flower-container").forEach(container => {
+    const id = parseFloat(container.dataset.id);
+    const flowerData = flowers.find(f => f.id === id);
+    if (flowerData) {
+      const flowerHead = container.querySelector(".flower");
+      if (flowerHead) {
+        flowerHead.style.setProperty("--size", flowerData.size + "px");
+        // Update petal mask
+        applyFlowerMask(flowerHead, flowerData.petals);
+      }
+    }
+  });
+}
+
+// RESET
+function resetGarden() {
+  deleteAllCookies();
+  localStorage.removeItem("flowers_data"); // Clear flower data from localStorage
+  document.querySelectorAll(".plant").forEach(updatePlant);
+  document.querySelectorAll(".flower-container").forEach(el => el.remove());
+}
+
+// Auto-growth intervals
+let growthInterval = null;
+let spawnInterval = null;
+
+function startAutoGrowth() {
+  // Grow existing flowers periodically
+  growthInterval = setInterval(() => {
+    growExistingFlowers();
+  }, GROWTH_INTERVAL);
+
+  // Spawn new flowers periodically
+  spawnInterval = setInterval(() => {
+    spawnFlower(true);
+  }, SPAWN_INTERVAL);
+}
+
+function stopAutoGrowth() {
+  if (growthInterval) clearInterval(growthInterval);
+  if (spawnInterval) clearInterval(spawnInterval);
+}
+
+// INIT
+window.addEventListener("load", () => {
+  document.querySelectorAll(".plant").forEach(updatePlant);
+  renderAllFlowers();
+
+  // Start automatic growth
+  startAutoGrowth();
+
+  // Spawn initial flower if garden is empty
+  const flowers = loadFlowers();
+  if (flowers.length === 0) {
+    spawnFlower(true);
+  }
+
+  document.getElementById("resetBtn")
+    .addEventListener("click", () => {
+      resetGarden();
+      // Spawn a new flower after reset
+      setTimeout(() => spawnFlower(true), 500);
+    });
+});
+
+// Stop growth when user leaves the page
+window.addEventListener("beforeunload", () => {
+  stopAutoGrowth();
+});
+
+// Pause when tab is hidden, resume when visible
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopAutoGrowth();
+  } else {
+    startAutoGrowth();
+  }
+});

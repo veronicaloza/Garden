@@ -1,0 +1,138 @@
+body {
+  margin: 0;
+  height: 100vh;
+  background: linear-gradient(to bottom,
+      #f7dde5 20%,
+      #f8cdda 40%,
+      #1d2b64 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+
+  h1 {
+    color: white;
+    position: fixed;
+    top: -30px;
+    left: 10px;
+    z-index: 2;
+    font-size: 3rem;
+    font-family: "quiverleaf-cf", sans-serif;
+    font-weight: 700;
+    font-style: normal;
+  }
+
+  #garden {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+  }
+
+  .flower-container {
+    --x: 50%;
+    --y: 50%;
+    --stem-height: 0px;
+    position: absolute;
+    left: var(--x);
+    bottom: 0;
+    width: 0;
+    height: calc(100% - var(--y));
+    pointer-events: none;
+  }
+
+
+  .stem {
+    --stem-height: 0%;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    height: var(--stem-height);
+    background: linear-gradient(to top,
+        #2d5a27 0%,
+        #4a7c43 20%,
+        #5d8a54 80%);
+    transform: translateX(-50%);
+    border-radius: 2px;
+    transition:
+      height 1s ease,
+      filter 1s ease;
+    filter: blur(0.5px);
+  }
+
+  /* Flower head at top of stem */
+  .flower {
+    --size: 0px;
+    --hue: 330;
+    --rotation: 0deg;
+    --g: /46.41% 46.41% radial-gradient(#000 calc(71% - 1px), #0000 71%) no-repeat;
+    /* Default colors (can be overridden by JS) */
+    --color-center: #ff6b9d;
+    --color-mid: #c44569;
+    --color-edge: #6b2d5c;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: var(--size);
+    aspect-ratio: 1;
+    background: radial-gradient(circle,
+        var(--color-center) 0%,
+        var(--color-mid) 50%,
+        var(--color-edge) 100%);
+    /* Mask is applied dynamically via JavaScript based on petal count */
+    transform: translate(-50%, -50%) rotate(var(--rotation));
+    transition:
+      width 1s ease,
+      height 1s ease,
+      filter 1s ease,
+      opacity 0.5s ease;
+    filter: blur(3px);
+    opacity: 0;
+  }
+
+  /* When flower is grown, show it */
+  .flower.grown {
+    opacity: 1;
+    filter: blur(1px);
+    animation: breathe 4s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+
+    0%,
+    100% {
+      transform: translate(-50%, -50%) rotate(var(--rotation)) scale(1);
+    }
+
+    50% {
+      transform: translate(-50%, -50%) rotate(var(--rotation)) scale(1.15);
+    }
+  }
+
+  #controls {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+  }
+
+  #controls button {
+    padding: 0.5rem 1rem;
+    margin: 0 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    background-color: transparent;
+    color: white;
+    border: 1px solid white;
+    border-radius: 25px;
+    pointer-events: auto;
+    font-family: "quiverleaf-cf", sans-serif;
+    font-weight: 700;
+    font-style: normal;
+  }
+}
