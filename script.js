@@ -156,12 +156,26 @@ function updatePlant(elt) {
   elt.style.setProperty("--hue", hueV);
 }
 
-// FLOWER LOGIC - Using localStorage for larger storage (5MB vs 4KB cookie limit)
+// FLOWER LOGIC - Optimized cookie storage
+// Data format: Array of [x, y, colorIndex, rotation, size, petals]
+// Example: [[45,32,3,180,65,9],[12,55,7,90,80,15]]
+// This compact format fits ~200 flowers in a 4KB cookie
+
 function loadFlowers() {
   try {
-    const data = localStorage.getItem("flowers_data");
+    const data = getCookie("f");
     if (!data) return [];
-    return JSON.parse(data);
+    const compact = JSON.parse(decodeURIComponent(data));
+    // Convert compact arrays back to objects
+    return compact.map((arr, idx) => ({
+      id: idx,
+      x: arr[0],
+      y: arr[1],
+      colorIndex: arr[2],
+      rotation: arr[3],
+      size: arr[4],
+      petals: arr[5]
+    }));
   } catch {
     return [];
   }
@@ -169,19 +183,28 @@ function loadFlowers() {
 
 function saveFlowers(flowers) {
   try {
-    localStorage.setItem("flowers_data", JSON.stringify(flowers));
+    // Convert objects to compact arrays [x, y, colorIndex, rotation, size, petals]
+    const compact = flowers.map(f => [
+      Math.round(f.x),
+      Math.round(f.y),
+      f.colorIndex,
+      Math.round(f.rotation),
+      Math.round(f.size),
+      f.petals
+    ]);
+    setCookie("f", encodeURIComponent(JSON.stringify(compact)), 365);
   } catch (e) {
     console.warn("Could not save flowers:", e);
   }
 }
 
-function createFlowerElement(flower, animate = false) {
+function createFlowerElement(flower, index, animate = false) {
   const garden = document.getElementById("garden");
 
   // Create container
   const container = document.createElement("div");
   container.className = "flower-container";
-  container.dataset.id = flower.id;
+  container.dataset.idx = index;
   container.style.setProperty("--x", flower.x + "%");
   container.style.setProperty("--y", flower.y + "%");
 
@@ -246,18 +269,18 @@ function spawnFlower(animate = true) {
   const colorIndex = Math.floor(Math.random() * FLOWER_COLORS.length);
 
   const newFlower = {
-    id: Date.now() + Math.random(),
-    x: 5 + Math.random() * 90,
-    y: 15 + Math.random() * 60,  // Flowers appear between 15% and 75% from top
+    x: Math.round(5 + Math.random() * 90),
+    y: Math.round(15 + Math.random() * 60),  // Flowers appear between 15% and 75% from top
     colorIndex: colorIndex,
-    rotation: Math.random() * 360,
-    size: 30 + Math.random() * 50,
+    rotation: Math.round(Math.random() * 360),
+    size: Math.round(30 + Math.random() * 50),
     petals: startingPetals
   };
 
+  const newIndex = flowers.length;
   flowers.push(newFlower);
   saveFlowers(flowers);
-  createFlowerElement(newFlower, animate);
+  createFlowerElement(newFlower, newIndex, animate);
 }
 
 function renderAllFlowers() {
@@ -266,7 +289,7 @@ function renderAllFlowers() {
 
   // Recreate from saved data
   const flowers = loadFlowers();
-  flowers.forEach(flower => createFlowerElement(flower, false));
+  flowers.forEach((flower, idx) => createFlowerElement(flower, idx, false));
 }
 
 function growExistingFlowers() {
@@ -282,9 +305,12 @@ function growExistingFlowers() {
       flower.size = Math.min(flower.size + FLOWER_GROWTH, MAX_FLOWER_SIZE);
       anyChanged = true;
     }
-    // Grow petals gradually (only advance stage every few growth ticks)
+    // Grow petals gradually
     if (!flower.petals) flower.petals = STARTING_PETALS[0];
-    flower.petals = getNextPetalStage(flower.petals);
+    if (flower.petals < PETAL_STAGES[PETAL_STAGES.length - 1]) {
+      flower.petals = getNextPetalStage(flower.petals);
+      anyChanged = true;
+    }
   });
 
   // Only save if something changed
@@ -294,8 +320,8 @@ function growExistingFlowers() {
 
   // Update existing DOM elements
   document.querySelectorAll(".flower-container").forEach(container => {
-    const id = parseFloat(container.dataset.id);
-    const flowerData = flowers.find(f => f.id === id);
+    const idx = parseInt(container.dataset.idx);
+    const flowerData = flowers[idx];
     if (flowerData) {
       const flowerHead = container.querySelector(".flower");
       if (flowerHead) {
@@ -310,7 +336,6 @@ function growExistingFlowers() {
 // RESET
 function resetGarden() {
   deleteAllCookies();
-  localStorage.removeItem("flowers_data"); // Clear flower data from localStorage
   document.querySelectorAll(".plant").forEach(updatePlant);
   document.querySelectorAll(".flower-container").forEach(el => el.remove());
 }
