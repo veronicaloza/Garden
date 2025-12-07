@@ -74,8 +74,8 @@ body {
   transform: translateX(-50%);
   border-radius: 2px;
   transition:
-    height 1s ease,
-    filter 1s ease;
+    height 2s ease 1s,
+    filter 2s ease 1s;
   filter: blur(0.5px);
 }
 
@@ -98,9 +98,9 @@ body {
       var(--color-edge) 100%);
   transform: translate(-50%, -50%) rotate(var(--rotation));
   transition:
-    width 1s ease,
-    height 1s ease,
-    filter 1s ease,
+    width 3s ease 2s,
+    height 3s ease 2s,
+    filter 2s ease 2s,
     opacity 0.5s ease;
   filter: blur(6px);
   opacity: 0;

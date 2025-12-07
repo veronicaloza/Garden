@@ -1,4 +1,3 @@
-// COOKIE HELPERS
 function setCookie(name, value, days) {
   const d = new Date();
   d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
@@ -28,38 +27,34 @@ function deleteAllCookies() {
   });
 }
 
-// GARDEN LOGIC
 const MAX_STAGE = 8;
-const THIRST_MS = 2 * 60 * 60 * 1000; // 2h
+const THIRST_MS = 2000;
 const MAX_FLOWERS = 50;
-const MAX_FLOWER_SIZE = 120; // Maximum flower size in pixels
-const FLOWER_GROWTH = 1; // How much flowers grow per tick (smaller for gradual growth)
+const MAX_FLOWER_SIZE = 120;
+const FLOWER_GROWTH = 1;
 
-// Auto-growth timing (in milliseconds)
-const GROWTH_INTERVAL = 5000; // Grow existing flowers every 3 seconds
-const SPAWN_INTERVAL = 5000; // Spawn new flower every 8 seconds
 
-// Petal stages that flowers grow through
+const GROWTH_INTERVAL = 5000;
+const SPAWN_INTERVAL = 5000;
+
 const PETAL_STAGES = [3, 6, 9, 12, 15, 18, 21, 25, 30, 35, 40, 45, 50];
-const STARTING_PETALS = [3, 6]; // Flowers randomly start at 3 or 6 petals
+const STARTING_PETALS = [3, 6];
 
-// Array of flower colors (each is an array of 3 colors for the radial gradient: [center, middle, edge])
 const FLOWER_COLORS = [
-  ['#E1DFE4', '#FCACE1', '#FFB8DA'],  // Gray → Pink → Rose
-  ['#FFB8DA', '#FAA28C', '#D4ED6B'],  // Pink → Peach → Lime
-  ['#FCACE1', '#E1DFE4', '#2666FB'],  // Pink → Gray → Blue
-  ['#D4ED6B', '#FFB8DA', '#FCACE1'],  // Lime → Pink → Magenta
-  ['#E4E4DB', '#FAA28C', '#FCACE1'],  // Cream → Peach → Pink
-  ['#FAA28C', '#FFB8DA', '#2666FB'],  // Peach → Pink → Blue
-  ['#2666FB', '#FCACE1', '#E1DFE4'],  // Blue → Pink → Gray
-  ['#FFB8DA', '#D4ED6B', '#E4E4DB'],  // Pink → Lime → Cream
-  ['#E1DFE4', '#D4ED6B', '#FAA28C'],  // Gray → Lime → Peach
-  ['#FCACE1', '#FAA28C', '#E4E4DB'],  // Pink → Peach → Cream
-  ['#D4ED6B', '#2666FB', '#FFB8DA'],  // Lime → Blue → Pink
-  ['#E4E4DB', '#FCACE1', '#D4ED6B'],  // Cream → Pink → Lime
+  ['#E1DFE4', '#FCACE1', '#FFB8DA'],
+  ['#FFB8DA', '#FAA28C', '#D4ED6B'],
+  ['#FCACE1', '#E1DFE4', '#2666FB'],
+  ['#D4ED6B', '#FFB8DA', '#FCACE1'],
+  ['#E4E4DB', '#FAA28C', '#FCACE1'],
+  ['#FAA28C', '#FFB8DA', '#2666FB'],
+  ['#2666FB', '#FCACE1', '#E1DFE4'],
+  ['#FFB8DA', '#D4ED6B', '#E4E4DB'],
+  ['#E1DFE4', '#D4ED6B', '#FAA28C'],
+  ['#FCACE1', '#FAA28C', '#E4E4DB'],
+  ['#D4ED6B', '#2666FB', '#FFB8DA'],
+  ['#E4E4DB', '#FCACE1', '#D4ED6B'],
 ];
 
-// Pre-defined flower masks for specific petal counts
 const PETAL_MASKS = {
   3: {
     g: '/46.41% 46.41% radial-gradient(#000 calc(71% - 1px),#0000 71%) no-repeat',
@@ -83,14 +78,11 @@ const PETAL_MASKS = {
   }
 };
 
-// Generate mask for any petal count by calculating positions around a circle
 function generateFlowerMask(petalCount) {
-  // Use preset if available
   if (PETAL_MASKS[petalCount]) {
     return PETAL_MASKS[petalCount];
   }
 
-  // Generate mathematically for other counts
   const petalSize = Math.max(5, 50 / petalCount * 2.5);
   const positions = [];
 
@@ -109,17 +101,15 @@ function generateFlowerMask(petalCount) {
   };
 }
 
-// Get next petal stage
 function getNextPetalStage(currentPetals) {
   for (let i = 0; i < PETAL_STAGES.length; i++) {
     if (PETAL_STAGES[i] > currentPetals) {
       return PETAL_STAGES[i];
     }
   }
-  return PETAL_STAGES[PETAL_STAGES.length - 1]; // Return max if already at max
+  return PETAL_STAGES[PETAL_STAGES.length - 1];
 }
 
-// Apply mask to flower element
 function applyFlowerMask(flowerHead, petalCount) {
   const maskData = generateFlowerMask(petalCount);
   flowerHead.style.setProperty('--g', maskData.g);
@@ -143,20 +133,17 @@ function updatePlant(elt) {
   let { sizeStage, last } = loadState(name);
   const now = Date.now();
 
-  // if too thirsty → reset
   if (now - last > THIRST_MS) {
     sizeStage = 0;
     setCookie(name + "_size", 0, 365);
   }
 
-  // map stage → css vars
   const sizeV = 10 + sizeStage * 5;      // 10vmin → 50vmin
   const hueV = (120 + sizeStage * 20) % 360;
   elt.style.setProperty("--size", sizeV + "vmin");
   elt.style.setProperty("--hue", hueV);
 }
 
-// FLOWER LOGIC
 function loadFlowers() {
   const data = getCookie("flowers_data");
   if (!data) return [];
@@ -174,34 +161,28 @@ function saveFlowers(flowers) {
 function createFlowerElement(flower, animate = false) {
   const garden = document.getElementById("garden");
 
-  // Create container
   const container = document.createElement("div");
   container.className = "flower-container";
   container.dataset.id = flower.id;
   container.style.setProperty("--x", flower.x + "%");
   container.style.setProperty("--y", flower.y + "%");
 
-  // Create stem
   const stem = document.createElement("div");
   stem.className = "stem";
 
-  // Create flower head
   const flowerHead = document.createElement("div");
   flowerHead.className = "flower";
   flowerHead.style.setProperty("--rotation", flower.rotation + "deg");
 
-  // Apply colors from array or fallback to hue-based
   if (flower.colorIndex !== undefined && FLOWER_COLORS[flower.colorIndex]) {
     const colors = FLOWER_COLORS[flower.colorIndex];
     flowerHead.style.setProperty("--color-center", colors[0]);
     flowerHead.style.setProperty("--color-mid", colors[1]);
     flowerHead.style.setProperty("--color-edge", colors[2]);
   } else {
-    // Fallback for old flowers without colorIndex
     flowerHead.style.setProperty("--hue", flower.hue || 330);
   }
 
-  // Apply petal mask based on current petal count
   const petals = flower.petals || STARTING_PETALS[0];
   applyFlowerMask(flowerHead, petals);
 
@@ -210,19 +191,15 @@ function createFlowerElement(flower, animate = false) {
   garden.appendChild(container);
 
   if (animate) {
-    // Start small, then grow with transition
     requestAnimationFrame(() => {
-      // Grow stem first
       stem.style.setProperty("--stem-height", "100%");
 
-      // Then bloom flower after stem grows
       setTimeout(() => {
         flowerHead.style.setProperty("--size", flower.size + "px");
         flowerHead.classList.add("grown");
       }, 600);
     });
   } else {
-    // Instant display for loaded flowers
     stem.style.setProperty("--stem-height", "100%");
     flowerHead.style.setProperty("--size", flower.size + "px");
     flowerHead.classList.add("grown");
@@ -235,10 +212,8 @@ function spawnFlower(animate = true) {
   const flowers = loadFlowers();
   if (flowers.length >= MAX_FLOWERS) return;
 
-  // Randomly start with 3 or 6 petals
   const startingPetals = STARTING_PETALS[Math.floor(Math.random() * STARTING_PETALS.length)];
 
-  // Random color from the array
   const colorIndex = Math.floor(Math.random() * FLOWER_COLORS.length);
 
   const newFlower = {
@@ -247,7 +222,7 @@ function spawnFlower(animate = true) {
     y: 15 + Math.random() * 60,  // Flowers appear between 15% and 75% from top
     colorIndex: colorIndex,
     rotation: Math.random() * 360,
-    size: 30 + Math.random() * 50,
+    size: 50 + Math.random() * 50,
     petals: startingPetals
   };
 
@@ -257,10 +232,8 @@ function spawnFlower(animate = true) {
 }
 
 function renderAllFlowers() {
-  // Remove existing flower containers
   document.querySelectorAll(".flower-container").forEach(el => el.remove());
 
-  // Recreate from saved data
   const flowers = loadFlowers();
   flowers.forEach(flower => createFlowerElement(flower, false));
 }
@@ -271,24 +244,18 @@ function growExistingFlowers() {
 
   let anyChanged = false;
 
-  // Increase size and petals of all flowers in data
   flowers.forEach(flower => {
-    // Grow size
     if (flower.size < MAX_FLOWER_SIZE) {
       flower.size = Math.min(flower.size + FLOWER_GROWTH, MAX_FLOWER_SIZE);
       anyChanged = true;
     }
-    // Grow petals gradually (only advance stage every few growth ticks)
     if (!flower.petals) flower.petals = STARTING_PETALS[0];
     flower.petals = getNextPetalStage(flower.petals);
   });
-
-  // Only save if something changed
   if (anyChanged) {
     saveFlowers(flowers);
   }
 
-  // Update existing DOM elements
   document.querySelectorAll(".flower-container").forEach(container => {
     const id = parseFloat(container.dataset.id);
     const flowerData = flowers.find(f => f.id === id);
@@ -296,31 +263,26 @@ function growExistingFlowers() {
       const flowerHead = container.querySelector(".flower");
       if (flowerHead) {
         flowerHead.style.setProperty("--size", flowerData.size + "px");
-        // Update petal mask
         applyFlowerMask(flowerHead, flowerData.petals);
       }
     }
   });
 }
 
-// RESET
 function resetGarden() {
   deleteAllCookies();
   document.querySelectorAll(".plant").forEach(updatePlant);
   document.querySelectorAll(".flower-container").forEach(el => el.remove());
 }
 
-// Auto-growth intervals
 let growthInterval = null;
 let spawnInterval = null;
 
 function startAutoGrowth() {
-  // Grow existing flowers periodically
   growthInterval = setInterval(() => {
     growExistingFlowers();
   }, GROWTH_INTERVAL);
 
-  // Spawn new flowers periodically
   spawnInterval = setInterval(() => {
     spawnFlower(true);
   }, SPAWN_INTERVAL);
@@ -331,15 +293,12 @@ function stopAutoGrowth() {
   if (spawnInterval) clearInterval(spawnInterval);
 }
 
-// INIT
 window.addEventListener("load", () => {
   document.querySelectorAll(".plant").forEach(updatePlant);
   renderAllFlowers();
 
-  // Start automatic growth
   startAutoGrowth();
 
-  // Spawn initial flower if garden is empty
   const flowers = loadFlowers();
   if (flowers.length === 0) {
     spawnFlower(true);
@@ -348,17 +307,14 @@ window.addEventListener("load", () => {
   document.getElementById("resetBtn")
     .addEventListener("click", () => {
       resetGarden();
-      // Spawn a new flower after reset
       setTimeout(() => spawnFlower(true), 500);
     });
 });
 
-// Stop growth when user leaves the page
 window.addEventListener("beforeunload", () => {
   stopAutoGrowth();
 });
 
-// Pause when tab is hidden, resume when visible
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     stopAutoGrowth();
