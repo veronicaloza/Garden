@@ -221,7 +221,7 @@ function spawnFlower(animate = true) {
   const newFlower = {
     id: Date.now() + Math.random(),
     x: 5 + Math.random() * 90,
-    y: 15 + Math.random() * 60,  // Flowers appear between 15% and 75% from top
+    y: 15 + Math.random() * 60,
     colorIndex: colorIndex,
     rotation: Math.random() * 360,
     size: 50 + Math.random() * 50,
@@ -247,7 +247,6 @@ function growExistingFlowers() {
   let anyChanged = false;
 
   flowers.forEach(flowerData => {
-    // 1. Calculate new state
     let newSize = flowerData.size;
     let newPetals = flowerData.petals || STARTING_PETALS[0];
 
@@ -259,11 +258,9 @@ function growExistingFlowers() {
     const nextPetalStage = getNextPetalStage(newPetals);
     const petalsChanged = nextPetalStage !== newPetals;
 
-    // 2. Update data object
     flowerData.size = newSize;
     flowerData.petals = nextPetalStage;
 
-    // 3. Find the DOM element
     const container = document.querySelector(`.flower-container[data-id="${flowerData.id}"]`);
     if (container) {
       const flowerHead = container.querySelector(".flower");
