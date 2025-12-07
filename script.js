@@ -33,10 +33,10 @@ const MAX_STAGE = 8;
 const THIRST_MS = 2 * 60 * 60 * 1000; // 2h
 const MAX_FLOWERS = 50;
 const MAX_FLOWER_SIZE = 120; // Maximum flower size in pixels
-const FLOWER_GROWTH = 2; // How much flowers grow per tick (smaller for gradual growth)
+const FLOWER_GROWTH = 1; // How much flowers grow per tick (smaller for gradual growth)
 
 // Auto-growth timing (in milliseconds)
-const GROWTH_INTERVAL = 3000; // Grow existing flowers every 3 seconds
+const GROWTH_INTERVAL = 5000; // Grow existing flowers every 3 seconds
 const SPAWN_INTERVAL = 5000; // Spawn new flower every 8 seconds
 
 // Petal stages that flowers grow through
