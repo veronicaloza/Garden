@@ -192,12 +192,14 @@ function createFlowerElement(flower, animate = false) {
 
   if (animate) {
     requestAnimationFrame(() => {
-      stem.style.setProperty("--stem-height", "100%");
+      requestAnimationFrame(() => {
+        stem.style.setProperty("--stem-height", "100%");
 
-      setTimeout(() => {
-        flowerHead.style.setProperty("--size", flower.size + "px");
-        flowerHead.classList.add("grown");
-      }, 600);
+        setTimeout(() => {
+          flowerHead.style.setProperty("--size", flower.size + "px");
+          flowerHead.classList.add("grown");
+        }, 600);
+      });
     });
   } else {
     stem.style.setProperty("--stem-height", "100%");
