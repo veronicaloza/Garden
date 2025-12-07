@@ -156,55 +156,28 @@ function updatePlant(elt) {
   elt.style.setProperty("--hue", hueV);
 }
 
-// FLOWER LOGIC - Optimized cookie storage
-// Data format: Array of [x, y, colorIndex, rotation, size, petals]
-// Example: [[45,32,3,180,65,9],[12,55,7,90,80,15]]
-// This compact format fits ~200 flowers in a 4KB cookie
-
+// FLOWER LOGIC
 function loadFlowers() {
+  const data = getCookie("flowers_data");
+  if (!data) return [];
   try {
-    const data = getCookie("f");
-    if (!data) return [];
-    const compact = JSON.parse(decodeURIComponent(data));
-    // Convert compact arrays back to objects
-    return compact.map((arr, idx) => ({
-      id: idx,
-      x: arr[0],
-      y: arr[1],
-      colorIndex: arr[2],
-      rotation: arr[3],
-      size: arr[4],
-      petals: arr[5]
-    }));
+    return JSON.parse(decodeURIComponent(data));
   } catch {
     return [];
   }
 }
 
 function saveFlowers(flowers) {
-  try {
-    // Convert objects to compact arrays [x, y, colorIndex, rotation, size, petals]
-    const compact = flowers.map(f => [
-      Math.round(f.x),
-      Math.round(f.y),
-      f.colorIndex,
-      Math.round(f.rotation),
-      Math.round(f.size),
-      f.petals
-    ]);
-    setCookie("f", encodeURIComponent(JSON.stringify(compact)), 365);
-  } catch (e) {
-    console.warn("Could not save flowers:", e);
-  }
+  setCookie("flowers_data", encodeURIComponent(JSON.stringify(flowers)), 365);
 }
 
-function createFlowerElement(flower, index, animate = false) {
+function createFlowerElement(flower, animate = false) {
   const garden = document.getElementById("garden");
 
   // Create container
   const container = document.createElement("div");
   container.className = "flower-container";
-  container.dataset.idx = index;
+  container.dataset.id = flower.id;
   container.style.setProperty("--x", flower.x + "%");
   container.style.setProperty("--y", flower.y + "%");
 
@@ -269,18 +242,18 @@ function spawnFlower(animate = true) {
   const colorIndex = Math.floor(Math.random() * FLOWER_COLORS.length);
 
   const newFlower = {
-    x: Math.round(5 + Math.random() * 90),
-    y: Math.round(15 + Math.random() * 60),  // Flowers appear between 15% and 75% from top
+    id: Date.now() + Math.random(),
+    x: 5 + Math.random() * 90,
+    y: 15 + Math.random() * 60,  // Flowers appear between 15% and 75% from top
     colorIndex: colorIndex,
-    rotation: Math.round(Math.random() * 360),
-    size: Math.round(30 + Math.random() * 50),
+    rotation: Math.random() * 360,
+    size: 30 + Math.random() * 50,
     petals: startingPetals
   };
 
-  const newIndex = flowers.length;
   flowers.push(newFlower);
   saveFlowers(flowers);
-  createFlowerElement(newFlower, newIndex, animate);
+  createFlowerElement(newFlower, animate);
 }
 
 function renderAllFlowers() {
@@ -289,7 +262,7 @@ function renderAllFlowers() {
 
   // Recreate from saved data
   const flowers = loadFlowers();
-  flowers.forEach((flower, idx) => createFlowerElement(flower, idx, false));
+  flowers.forEach(flower => createFlowerElement(flower, false));
 }
 
 function growExistingFlowers() {
@@ -305,12 +278,9 @@ function growExistingFlowers() {
       flower.size = Math.min(flower.size + FLOWER_GROWTH, MAX_FLOWER_SIZE);
       anyChanged = true;
     }
-    // Grow petals gradually
+    // Grow petals gradually (only advance stage every few growth ticks)
     if (!flower.petals) flower.petals = STARTING_PETALS[0];
-    if (flower.petals < PETAL_STAGES[PETAL_STAGES.length - 1]) {
-      flower.petals = getNextPetalStage(flower.petals);
-      anyChanged = true;
-    }
+    flower.petals = getNextPetalStage(flower.petals);
   });
 
   // Only save if something changed
@@ -320,8 +290,8 @@ function growExistingFlowers() {
 
   // Update existing DOM elements
   document.querySelectorAll(".flower-container").forEach(container => {
-    const idx = parseInt(container.dataset.idx);
-    const flowerData = flowers[idx];
+    const id = parseFloat(container.dataset.id);
+    const flowerData = flowers.find(f => f.id === id);
     if (flowerData) {
       const flowerHead = container.querySelector(".flower");
       if (flowerHead) {
